@@ -21,11 +21,11 @@
 #     If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-from anybox.testing.openerp import SharedSetupTransactionCase
+from openerp.tests.common import TransactionCase
 import time
 
 
-class test_account_invoice_line_sort(object):
+class test_account_invoice_line_sort(TransactionCase):
 
     _module_ns = 'account_invoice_line_sort'
 
@@ -60,7 +60,7 @@ class test_account_invoice_line_sort(object):
             'invoice_line': [(0, 0, value) for value in self.lines_vals]
         }
 
-    def test_invoice_sort_on_create(self):
+    def common_test_invoice_sort_on_create(self):
         self.partner.line_order = self.line_order
         self.partner.line_order_direction = self.line_order_direction
 
@@ -73,7 +73,7 @@ class test_account_invoice_line_sort(object):
                              (self.expected_sequence[line.name],
                               line.sequence))
 
-    def test_invoice_sort_on_write(self):
+    def common_test_invoice_sort_on_write(self):
         invoice = self.invoice_model.create(self.invoice_vals)
         invoice.line_order = self.line_order
         invoice.line_order_direction = self.line_order_direction
@@ -86,73 +86,109 @@ class test_account_invoice_line_sort(object):
                               line.sequence))
 
 
-class test_account_invoice_line_sort_name_asc(test_account_invoice_line_sort,
-                                              SharedSetupTransactionCase):
+class test_account_invoice_line_sort_name_asc(
+        test_account_invoice_line_sort):
 
-        def setUp(self):
-            super(test_account_invoice_line_sort_name_asc, self).setUp()
-            self.expected_sequence = {self.descriptions[0]: 10,
-                                      self.descriptions[1]: 20,
-                                      self.descriptions[2]: 30}
-            self.line_order = 'name'
-            self.line_order_direction = 'asc'
+    def setUp(self):
+        super(test_account_invoice_line_sort_name_asc, self).setUp()
+        self.expected_sequence = {self.descriptions[0]: 10,
+                                  self.descriptions[1]: 20,
+                                  self.descriptions[2]: 30}
+        self.line_order = 'name'
+        self.line_order_direction = 'asc'
+
+    def test_invoice_sort_on_create(self):
+        self.common_test_invoice_sort_on_create()
+
+    def test_invoice_sort_on_write(self):
+        self.common_test_invoice_sort_on_write()
 
 
-class test_account_invoice_line_sort_name_desc(test_account_invoice_line_sort,
-                                               SharedSetupTransactionCase):
+class test_account_invoice_line_sort_name_desc(
+        test_account_invoice_line_sort):
 
-        def setUp(self):
-            super(test_account_invoice_line_sort_name_desc, self).setUp()
-            self.expected_sequence = {self.descriptions[0]: 30,
-                                      self.descriptions[1]: 20,
-                                      self.descriptions[2]: 10}
-            self.line_order = 'name'
-            self.line_order_direction = 'desc'
+    def setUp(self):
+        super(test_account_invoice_line_sort_name_desc, self).setUp()
+        self.expected_sequence = {self.descriptions[0]: 30,
+                                  self.descriptions[1]: 20,
+                                  self.descriptions[2]: 10}
+        self.line_order = 'name'
+        self.line_order_direction = 'desc'
+
+    def test_invoice_sort_on_create(self):
+        self.common_test_invoice_sort_on_create()
+
+    def test_invoice_sort_on_write(self):
+        self.common_test_invoice_sort_on_write()
 
 
 class test_account_invoice_line_sort_price_unit_asc(
-        test_account_invoice_line_sort, SharedSetupTransactionCase):
+        test_account_invoice_line_sort):
 
-        def setUp(self):
-            super(test_account_invoice_line_sort_price_unit_asc, self).setUp()
-            self.expected_sequence = {self.descriptions[0]: 20,
-                                      self.descriptions[1]: 10,
-                                      self.descriptions[2]: 30}
-            self.line_order = 'price_unit'
-            self.line_order_direction = 'asc'
+    def setUp(self):
+        super(test_account_invoice_line_sort_price_unit_asc, self).setUp()
+        self.expected_sequence = {self.descriptions[0]: 20,
+                                  self.descriptions[1]: 10,
+                                  self.descriptions[2]: 30}
+        self.line_order = 'price_unit'
+        self.line_order_direction = 'asc'
+
+    def test_invoice_sort_on_create(self):
+        self.common_test_invoice_sort_on_create()
+
+    def test_invoice_sort_on_write(self):
+        self.common_test_invoice_sort_on_write()
 
 
 class test_account_invoice_line_sort_price_unit_desc(
-        test_account_invoice_line_sort, SharedSetupTransactionCase):
+        test_account_invoice_line_sort):
 
-        def setUp(self):
-            super(test_account_invoice_line_sort_price_unit_desc, self).setUp()
-            self.expected_sequence = {self.descriptions[0]: 20,
-                                      self.descriptions[1]: 30,
-                                      self.descriptions[2]: 10}
-            self.line_order = 'price_unit'
-            self.line_order_direction = 'desc'
+    def setUp(self):
+        super(test_account_invoice_line_sort_price_unit_desc, self).setUp()
+        self.expected_sequence = {self.descriptions[0]: 20,
+                                  self.descriptions[1]: 30,
+                                  self.descriptions[2]: 10}
+        self.line_order = 'price_unit'
+        self.line_order_direction = 'desc'
+
+    def test_invoice_sort_on_create(self):
+        self.common_test_invoice_sort_on_create()
+
+    def test_invoice_sort_on_write(self):
+        self.common_test_invoice_sort_on_write()
 
 
 class test_account_invoice_line_sort_amount_asc(
-        test_account_invoice_line_sort, SharedSetupTransactionCase):
+        test_account_invoice_line_sort):
 
-        def setUp(self):
-            super(test_account_invoice_line_sort_amount_asc, self).setUp()
-            self.expected_sequence = {self.descriptions[0]: 20,
-                                      self.descriptions[1]: 30,
-                                      self.descriptions[2]: 10}
-            self.line_order = 'price_subtotal'
-            self.line_order_direction = 'asc'
+    def setUp(self):
+        super(test_account_invoice_line_sort_amount_asc, self).setUp()
+        self.expected_sequence = {self.descriptions[0]: 20,
+                                  self.descriptions[1]: 30,
+                                  self.descriptions[2]: 10}
+        self.line_order = 'price_subtotal'
+        self.line_order_direction = 'asc'
+
+    def test_invoice_sort_on_create(self):
+        self.common_test_invoice_sort_on_create()
+
+    def test_invoice_sort_on_write(self):
+        self.common_test_invoice_sort_on_write()
 
 
 class test_account_invoice_line_sort_amount_desc(
-        test_account_invoice_line_sort, SharedSetupTransactionCase):
+        test_account_invoice_line_sort):
 
-        def setUp(self):
-            super(test_account_invoice_line_sort_amount_desc, self).setUp()
-            self.expected_sequence = {self.descriptions[0]: 20,
-                                      self.descriptions[1]: 10,
-                                      self.descriptions[2]: 30}
-            self.line_order = 'price_subtotal'
-            self.line_order_direction = 'desc'
+    def setUp(self):
+        super(test_account_invoice_line_sort_amount_desc, self).setUp()
+        self.expected_sequence = {self.descriptions[0]: 20,
+                                  self.descriptions[1]: 10,
+                                  self.descriptions[2]: 30}
+        self.line_order = 'price_subtotal'
+        self.line_order_direction = 'desc'
+
+    def test_invoice_sort_on_create(self):
+        self.common_test_invoice_sort_on_create()
+
+    def test_invoice_sort_on_write(self):
+        self.common_test_invoice_sort_on_write()
