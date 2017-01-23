@@ -91,6 +91,6 @@ class InvoiceMerge(models.TransientModel):
         }[invoices[0].type]
         action = aw_obj.for_xml_id('account', xid)
         action.update({
-            'domain': [('id', 'in', ids + allinvoices.keys())],
+            'domain': [('id', 'in', list(ids) + allinvoices.keys())],
         })
         return action

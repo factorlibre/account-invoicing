@@ -46,8 +46,6 @@ class TestAccountInvoiceMerge(TransactionCase):
 
     def test_invoice_merge(self):
         invoices = self.supplier_invoice_1 + self.supplier_invoice_2
-        ctx = dict(self.wiz_context, active_ids=invoices._ids)
-        self.wiz_model.with_context(ctx).create({})
         invoices_info, invoice_lines_info = invoices.do_merge()
         for k in invoices_info:
             new_inv = self.invoice_model.browse(k)
@@ -57,8 +55,17 @@ class TestAccountInvoiceMerge(TransactionCase):
                 len(new_inv_line_ids), len(new_inv.invoice_line._ids),
                 "Incorrect Invoice Line Mapping")
 
-    def test_dirty_check(self):
+    def test_invoice_merge_wizard(self):
         invoices = self.supplier_invoice_1 + self.supplier_invoice_2
         ctx = dict(self.wiz_context, active_ids=invoices._ids)
         wiz = self.wiz_model.with_context(ctx).create({})
-        self.assertRaises(UserError, wiz._dirty_check())
+        act = wiz.merge_invoices()
+        self.assertEqual(
+            len(act['domain'][0][2]), 3, "Error in invoice.merge wizard")
+
+    def test_dirty_check(self):
+        invoices = self.supplier_invoice_1 + self.supplier_invoice_3
+        ctx = dict(self.wiz_context, active_ids=invoices._ids)
+        wiz = self.wiz_model.with_context(ctx).create({})
+        with self.assertRaises(UserError):
+            wiz._dirty_check()

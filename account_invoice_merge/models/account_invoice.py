@@ -157,7 +157,8 @@ class AccountInvoice(models.Model):
                     # append a new "standalone" line
                     o_line.update(
                         invoice_line._convert_to_write(invoice_line._cache))
-                    del o_line['invoice_id']
+                    if 'invoice_id' in o_line:
+                        del o_line['invoice_id']
                     o_line['o_line_ids'] = [invoice_line.id]
                     o_line['sequence'] = line_sequence
                     line_sequence += 1
