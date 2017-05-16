@@ -15,7 +15,10 @@
               "Odoo Community Association (OCA)",
     'website': 'http://www.openerp.net.cn',
     'license': 'AGPL-3',
-    'depends': ['account'],
+    'depends': [
+        'account',
+        'stock_picking_invoice_link',
+    ],
     'data': [
         'wizard/invoice_merge_view.xml',
     ],

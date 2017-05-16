@@ -193,6 +193,10 @@ class AccountInvoice(models.Model):
                 workflow.trg_validate(
                     self.env.uid, 'account.invoice', old_id, 'invoice_cancel',
                     self.env.cr)
+                invoice = self.env['account.invoice'].browse(old_id)
+                if invoice.picking_ids:
+                    invoice.picking_ids.write({'invoice_state': 'invoiced'})
+
         # make link between original sale order if sale is not installed
         # None if purchase is not installed
         if 'sale.order' in self.env.registry:
