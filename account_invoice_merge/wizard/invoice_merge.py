@@ -82,7 +82,7 @@ class InvoiceMerge(models.TransientModel):
         ids = self._context.get('active_ids', [])
         invoices = self.env['account.invoice'].browse(ids)
         allinvoices = invoices.do_merge(keep_references=self.keep_references,
-                                        date_invoice=self.date_invoice)[0]
+                                        date_invoice=self.date_invoice)
         xid = {
             'out_invoice': 'action_invoice_tree1',
             'out_refund': 'action_invoice_tree3',
