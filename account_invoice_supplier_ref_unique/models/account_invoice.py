@@ -42,7 +42,8 @@ class AccountInvoice(models.Model):
 
     @api.onchange('supplier_invoice_number')
     def _onchange_supplier_invoice_number(self):
-        self.supplier_invoice_number = self.supplier_invoice_number.strip()
+        if self.supplier_invoice_number:
+            self.supplier_invoice_number = self.supplier_invoice_number.strip()
         if not self.reference:
             self.reference = self.supplier_invoice_number
 
