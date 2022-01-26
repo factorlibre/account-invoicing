@@ -1,4 +1,5 @@
 # Copyright 2016 Acsone
+# © 2022 FactorLibre - Luis J. Salvatierra <luis.salvatierra@factorlibre.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo.exceptions import ValidationError
@@ -46,7 +47,10 @@ class TestAccountInvoiceSupplierRefUnique(SavepointCase):
             'supplier_invoice_number': 'ABC123bis'})
 
     def test_onchange_supplier_invoice_number(self):
+        self.invoice.supplier_invoice_number = 'ABC123 '
         self.invoice._onchange_supplier_invoice_number()
+        self.assertNotEqual('ABC123 ', self.invoice.supplier_invoice_number)
+        self.assertEqual('ABC123', self.invoice.supplier_invoice_number)
         self.assertEqual(self.invoice.reference,
                          self.invoice.supplier_invoice_number,
                          "_onchange_supplier_invoice_number")
