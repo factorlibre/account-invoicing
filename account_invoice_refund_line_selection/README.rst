@@ -38,6 +38,7 @@ Contributors
 ------------
 
 * Jaime Arroyo <jaime.arroyo@creublanca.es>
+* Luis J. Salvatierra <luis.salvatierra@factorlibre.com>
 
 Maintainer
 ----------
