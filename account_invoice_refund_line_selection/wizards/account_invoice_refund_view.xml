@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- © 2022 - FactorLibre - Luis J. Salvatierra <luis.salvatierra@factorlibre.com>
+     License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html). -->
 <odoo>
     <record id="view_account_invoice_refund_lines" model="ir.ui.view">
         <field name="name">account.invoice.refund.lines.form</field>
@@ -10,14 +12,14 @@
                     <page string="Invoice Lines">
                         <field name="selectable_invoice_lines_ids" invisible="1"/>
                         <field name="line_ids">
-                            <tree string="Invoice Lines">
+                            <tree string="Invoice Lines" editable="bottom">
                                 <field name="sequence" widget="handle" />
-                                <field name="product_id"/>
-                                <field name="name"/>
-                                <field name="quantity"/>
-                                <field name="discount"/>
-                                <field name="invoice_line_tax_ids"/>
-                                <field name="price_unit"/>
+                                <field name="product_id" readonly="1"/>
+                                <field name="name" readonly="1"/>
+                                <field name="quantity" readonly="1"/>
+                                <field name="discount" readonly="1"/>
+                                <field name="invoice_line_tax_ids" widget="many2many_tags" readonly="1"/>
+                                <field name="price_unit" readonly="1"/>
                                 <field name="price_subtotal"/>
                             </tree>
                         </field>

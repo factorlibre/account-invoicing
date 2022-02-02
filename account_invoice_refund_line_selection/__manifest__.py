@@ -1,9 +1,10 @@
 # Copyright 2019 Creu Blanca
+# © 2022 FactorLibre - Luis J. Salvatierra <luis.salvatierra@factorlibre.com>
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html).
 
 {
     'name': 'Account invoice refund line',
-    'version': '11.0.1.0.0',
+    'version': '11.0.1.1.0',
     'category': 'Accounting & Finance',
     'summary': 'This module allows the user to refund specific '
                'lines in a invoice',
