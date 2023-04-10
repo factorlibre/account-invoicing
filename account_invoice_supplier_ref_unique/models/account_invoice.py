@@ -1,4 +1,5 @@
 # Copyright 2016 Acsone
+# © 2022 FactorLibre - Luis J. Salvatierra <luis.salvatierra@factorlibre.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo import _, api, fields, models
@@ -41,6 +42,8 @@ class AccountInvoice(models.Model):
 
     @api.onchange('supplier_invoice_number')
     def _onchange_supplier_invoice_number(self):
+        if self.supplier_invoice_number:
+            self.supplier_invoice_number = self.supplier_invoice_number.strip()
         if not self.reference:
             self.reference = self.supplier_invoice_number
 
