@@ -12,43 +12,47 @@ class AccountTax(models.Model):
         res = super()._prepare_tax_totals(base_lines, currency, tax_lines)
         if not base_lines:
             return res
+
         record = base_lines[0]["record"]
-        line_currency = record.currency_id
-        company = record.company_id
-        currency = company.currency_id
+        company_currency_id = record.company_id.currency_id
         if (
             record._name != "account.move.line"
             or not record.move_id.invoice_date
-            or line_currency == currency
+            or record.currency_id == company_currency_id
         ):
             return res
+
         res["display_company_currency_taxes"] = True
+        invoice_id = record.move_id
+        is_inbound = invoice_id.is_inbound()
+        is_outbound = invoice_id.is_outbound()
+        tax_line_ids = (invoice_id.line_ids - invoice_id.invoice_line_ids).filtered(
+            lambda x: x.tax_line_id
+        )
+
+        group_tax_id_sum = {}
+        for tax_line_id in tax_line_ids:
+            group_tax_id_sum.setdefault(tax_line_id.tax_group_id.id, 0)
+            if is_inbound:
+                group_tax_id_sum[tax_line_id.tax_group_id.id] += (
+                    tax_line_id.debit * -1 or tax_line_id.credit
+                )
+            elif is_outbound:
+                group_tax_id_sum[tax_line_id.tax_group_id.id] += (
+                    tax_line_id.debit or tax_line_id.credit * -1
+                )
+
         for data_list in res["groups_by_subtotal"].values():
             for group in data_list:
-                base_amount_company_currency = line_currency._convert(
-                    group["tax_group_base_amount"],
-                    currency,
-                    company,
-                    record.move_id.invoice_date,
-                )
-                amount_company_currency = line_currency._convert(
-                    group["tax_group_amount"],
-                    currency,
-                    company,
-                    record.move_id.invoice_date,
-                )
+                total_group_tax = 0
+                if group["group_key"] in group_tax_id_sum.keys():
+                    total_group_tax = group_tax_id_sum[group["group_key"]]
                 group.update(
                     {
-                        "tax_group_base_amount_company_currency": base_amount_company_currency,
-                        "tax_group_amount_company_currency": amount_company_currency,
-                        "formatted_tax_group_base_amount_company_currency": formatLang(
-                            self.env,
-                            base_amount_company_currency,
-                            currency_obj=currency,
-                        ),
                         "formatted_tax_group_amount_company_currency": formatLang(
-                            self.env, amount_company_currency, currency_obj=currency
+                            self.env, total_group_tax, currency_obj=company_currency_id
                         ),
                     }
                 )
+
         return res

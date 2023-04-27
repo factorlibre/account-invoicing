@@ -3,16 +3,12 @@
 {
     "name": "Taxes in company currency in invoice report",
     "version": "16.0.1.0.0",
-    "depends": [
-        "account",
-    ],
+    "depends": ["account"],
     "category": "Accounting",
-    "author": "FactorLibre,Odoo Community Association (OCA)",
+    "author": "FactorLibre, Odoo Community Association (OCA)",
     "license": "AGPL-3",
     "website": "https://github.com/OCA/account-invoicing",
-    "data": [
-        "views/tax_groups_totals.xml",
-    ],
+    "data": ["views/tax_groups_totals.xml"],
     "installable": True,
     "application": False,
 }

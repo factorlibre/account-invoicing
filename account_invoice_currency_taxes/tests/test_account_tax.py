@@ -32,11 +32,6 @@ class TestAccountInvoice(AccountTestInvoicingCommon):
         self.assertFalse(self.invoice.tax_totals.get("display_company_currency_taxes"))
         for data_list in self.invoice.tax_totals["groups_by_subtotal"].values():
             for group in data_list:
-                self.assertFalse(group.get("tax_group_base_amount_company_currency"))
-                self.assertFalse(group.get("tax_group_amount_company_currency"))
-                self.assertFalse(
-                    group.get("formatted_tax_group_base_amount_company_currency")
-                )
                 self.assertFalse(
                     group.get("formatted_tax_group_amount_company_currency")
                 )
@@ -44,19 +39,6 @@ class TestAccountInvoice(AccountTestInvoicingCommon):
         self.assertTrue(self.invoice.tax_totals.get("display_company_currency_taxes"))
         for data_list in self.invoice.tax_totals["groups_by_subtotal"].values():
             for group in data_list:
-                self.assertEqual(
-                    group["tax_group_base_amount_company_currency"]
-                    * self.currency_euro_rate,
-                    group["tax_group_base_amount"],
-                )
-                self.assertEqual(
-                    group["tax_group_amount_company_currency"]
-                    * self.currency_euro_rate,
-                    group["tax_group_amount"],
-                )
-                self.assertTrue(
-                    group.get("formatted_tax_group_base_amount_company_currency")
-                )
                 self.assertTrue(
                     group.get("formatted_tax_group_amount_company_currency")
                 )
