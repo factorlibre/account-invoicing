@@ -10,7 +10,7 @@ class AccountInvoiceLine(models.Model):
     _inherit = 'account.invoice.line'
 
     sequence = fields.Integer(help="Shows the sequence of this line in the "
-                              " invoice.", default=9999)
+                              " invoice.", default=1)
 
     # shows sequence on the invoice line
     sequence2 = fields.Integer(help="Shows the sequence of this line in the "
