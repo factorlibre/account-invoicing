@@ -5,6 +5,7 @@
         <field name="name">account.invoice.supplier.form.force_number</field>
         <field name="model">account.invoice</field>
         <field name="inherit_id" ref="account.invoice_supplier_form"/>
+        <field name="active" eval="False"/>
         <field name="arch" type="xml">
             <field name="move_name" position="attributes">
                 <attribute name="attrs">{'invisible': [('state', '!=', 'draft')]}</attribute>
