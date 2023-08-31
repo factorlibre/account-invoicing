@@ -78,3 +78,10 @@ class TestSelfInvoice(common.TransactionCase):
         self.assertTrue(self.invoice.self_invoice_number)
         new_invoice = self.invoice.copy()
         self.assertFalse(new_invoice.self_invoice_number)
+
+    def test_invoice_write_can_self_invoice(self):
+        self.assertFalse(self.invoice.can_self_invoice)
+        self.invoice.write({'can_self_invoice': True})
+        invoice = self.env['account.invoice'].browse(self.invoice.id)
+        self.assertFalse(invoice.can_self_invoice)
+        self.assertFalse(invoice.partner_id.self_invoice)
