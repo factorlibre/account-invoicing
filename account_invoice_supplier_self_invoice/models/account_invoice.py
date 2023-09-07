@@ -12,7 +12,10 @@ class AccountInvoice(models.Model):
         readonly=True, copy=False
     )
     set_self_invoice = fields.Boolean(string='Set self invoice', copy=False)
-    can_self_invoice = fields.Boolean(related='partner_id.self_invoice')
+    can_self_invoice = fields.Boolean(
+        related='partner_id.self_invoice',
+        readonly=True,
+    )
 
     @api.onchange('partner_id', 'company_id')
     def _onchange_partner_id(self):
