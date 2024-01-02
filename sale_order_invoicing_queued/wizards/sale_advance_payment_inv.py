@@ -8,11 +8,23 @@ from collections import defaultdict
 class SaleAdvancePaymentInv(models.TransientModel):
     _inherit = "sale.advance.payment.inv"
 
+    def _grouped_orders_create_invoices_job(self, orders):
+        new_delay = orders.with_delay(
+            priority=self.env.context.get("queue_job_priority", None),
+            eta=self.env.context.get("queue_job_eta", None),
+            max_retries=self.env.context.get("queue_job_max_retries", None),
+            description=self.env.context.get("queue_job_description", None),
+            channel=self.env.context.get("queue_job_channel", None),
+            identity_key=self.env.context.get("queue_job_identity_key", None),
+        ).create_invoices_job(final=self.advance_payment_method == "all")
+        if not new_delay:
+            return False
+        job = self.env["queue.job"].search([("uuid", "=", new_delay.uuid)])
+        return job
+
     def enqueue_invoices(self):
-        queue_obj = self.env['queue.job']
         order_obj = self.env['sale.order']
         context = self.env.context
-        final = (self.advance_payment_method == 'all')
         if (self.advance_payment_method not in {'delivered', 'all'}):
             # Call standard method in these cases
             return self.create_invoices()
@@ -30,6 +42,6 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 ) % (order.name, ))
             grouped_orders[group_key] |= order
         for orders in grouped_orders.values():
-            new_delay = orders.with_delay().create_invoices_job(final)
-            job = queue_obj.search([('uuid', '=', new_delay.uuid)])
-            orders.sudo().write({'invoicing_job_ids': [(4, job.id)]})
+            job = self._grouped_orders_create_invoices_job(orders)
+            if job:
+                orders.sudo().write({"invoicing_job_ids": [(4, job.id)]})
