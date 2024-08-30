@@ -1,7 +1,7 @@
 # Copyright 2021 Tecnativa - Víctor Martínez
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl)
 
-from odoo import fields
+from odoo import Command, fields
 from odoo.tests import Form, common
 
 
@@ -11,6 +11,7 @@ class TestAccountMove(common.TransactionCase):
         super().setUpClass()
         usd = cls.env.ref("base.USD")
         eur = cls.env.ref("base.EUR")
+        usd.active = True
         cls.currency = cls.env.ref("base.main_company").currency_id
         cls.currency_extra = eur if cls.currency == usd else usd
         cls.account_tax = cls.env["account.tax"].create(
@@ -53,6 +54,9 @@ class TestAccountMove(common.TransactionCase):
         # Create custom rates to currency + currency_extra
         cls._create_currency_rate(cls, cls.currency, "2000-01-01", 1.0)
         cls._create_currency_rate(cls, cls.currency_extra, "2000-01-01", 2.0)
+        cls.env.user.write(
+            {"groups_id": [(Command.LINK, cls.env.ref("base.group_multi_currency").id)]}
+        )
 
     def _create_currency_rate(self, currency_id, name, rate):
         self.env["res.currency.rate"].create(
@@ -83,12 +87,5 @@ class TestAccountMove(common.TransactionCase):
         invoice = self._create_invoice(self.currency_extra)
         self.assertAlmostEqual(invoice.currency_rate_amount, 2.0, 2)
         self.assertAlmostEqual(invoice.line_ids[0].currency_rate, 2.0, 2)
-        rate_custom = self.currency_extra.rate_ids.filtered(
-            lambda x: x.name == fields.Date.from_string("2000-01-01")
-        )
-        rate_custom.rate = 3.0
-        self.assertAlmostEqual(invoice.currency_rate_amount, 2.0, 2)
-        self.assertAlmostEqual(invoice.line_ids[0].currency_rate, 2.0, 2)
         invoice.button_draft()
-        self.assertAlmostEqual(invoice.currency_rate_amount, 3.0, 2)
-        self.assertAlmostEqual(invoice.line_ids[0].currency_rate, 3.0, 2)
+        self.assertAlmostEqual(invoice.currency_rate_amount, 2.0, 2)

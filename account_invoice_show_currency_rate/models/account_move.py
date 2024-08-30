@@ -18,7 +18,7 @@ class AccountMove(models.Model):
 
     @api.depends(
         "state",
-        "date",
+        "invoice_date",
         "line_ids.amount_currency",
         "line_ids.balance",
         "company_id",
@@ -28,23 +28,14 @@ class AccountMove(models.Model):
     def _compute_currency_rate_amount(self):
         """It's necessary to define value according to some cases:
         - Case A: Currency is equal to company currency (Value = 1)
-        - Case B: Move exist previously (posted) and get real rate according to lines
-        - Case C: Get expected rate (according to date) to show some value in creation.
+        - Case B: Get expected rate (according to invoice_date) to show some value in creation.
         """
         self.currency_rate_amount = 1
         for item in self.filtered("show_currency_rate_amount"):
-            lines = item.line_ids.filtered(lambda x: abs(x.amount_currency) > 0)
-            if item.state == "posted" and lines:
-                amount_currency_positive = sum(
-                    [abs(amc) for amc in lines.mapped("amount_currency")]
-                )
-                total_balance_positive = sum([abs(b) for b in lines.mapped("balance")])
-                item.currency_rate_amount = (
-                    amount_currency_positive / total_balance_positive
-                )
-            else:
-                rates = item.currency_id._get_rates(item.company_id, item.date)
-                item.currency_rate_amount = rates.get(item.currency_id.id)
+            rates = item.currency_id._get_rates(
+                item.company_id, item.invoice_date or item.date
+            )
+            item.currency_rate_amount = rates.get(item.currency_id.id)
 
     @api.depends("currency_id", "currency_id.rate_ids", "company_id")
     def _compute_show_currency_rate_amount(self):
