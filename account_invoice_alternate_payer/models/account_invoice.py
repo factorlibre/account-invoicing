@@ -19,8 +19,10 @@ class AccountInvoice(models.Model):
     @api.model
     def line_get_convert(self, line, part):
         res = super(AccountInvoice, self).line_get_convert(line, part)
-        if line.get('type', False) == 'dest' and self.alternate_payer_id:
-            res['partner_id'] = self.alternate_payer_id.id
+        if line.get('type', False) == 'dest' and line.get('invoice_id'):
+            invoice = self.browse(line['invoice_id'])
+            if invoice.alternate_payer_id:
+                res['partner_id'] = invoice.alternate_payer_id.id
         return res
 
     @api.onchange('partner_id', 'company_id', 'alternate_payer_id')
