@@ -1,0 +1,6 @@
+.o_report_layout_boxed {
+    table tbody tr.o_disc td {
+        background-color: white !important;
+        color: map-get($grays, "700") !important;
+    }
+}

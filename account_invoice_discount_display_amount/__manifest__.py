@@ -1,4 +1,5 @@
 # Copyright 2022 Manuel Regidor <manuel.regidor@sygel.es>
+# Copyright 2025 Aritz Olea <aritz.olea@factorlibre.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 {
@@ -15,4 +16,9 @@
         "views/account_move_views.xml",
         "report/report_invoice.xml",
     ],
+    "assets": {
+        "web.report_assets_common": [
+            "account_invoice_discount_display_amount/data/layout_boxed.scss",
+        ]
+    },
 }
