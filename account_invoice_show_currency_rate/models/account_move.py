@@ -43,26 +43,3 @@ class AccountMove(models.Model):
             item.show_currency_rate_amount = (
                 item.currency_id and item.currency_id != item.company_id.currency_id
             )
-
-
-class AccountMoveLine(models.Model):
-    _inherit = "account.move.line"
-
-    @api.depends(
-        "currency_id",
-        "move_id.company_id",
-        "move_id.date",
-        "move_id.state",
-        "amount_currency",
-        "balance",
-    )
-    def _compute_currency_rate(self):
-        # If move is posted, get rate based on line amount
-        res = super()._compute_currency_rate()
-        for line in self:
-            if line.move_id.state != "posted" or not line.amount_currency:
-                continue
-            line.currency_rate = (
-                abs(line.amount_currency) / abs(line.balance) if line.balance else 0
-            )
-        return res
