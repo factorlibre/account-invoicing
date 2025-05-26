@@ -33,7 +33,11 @@ class AccountMove(models.Model):
         for vals in vals_list:
             if "currency_id" in vals and not vals.get("original_currency_id", False):
                 vals["original_currency_id"] = vals["currency_id"]
-        return super().create(vals_list)
+        ret = super().create(vals_list)
+        for inv in ret.filtered(lambda inv: not inv.original_currency_id):
+            inv.original_currency_id = inv.currency_id
+            inv.invoice_line_ids._set_original_price_unit()
+        return ret
 
     def action_account_change_currency(self):
         """
