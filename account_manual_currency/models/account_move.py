@@ -140,6 +140,46 @@ class AccountMove(models.Model):
                     else (1.0 / last_rate[self.company_id])
                 )
 
+    @api.model
+    def _update_balance_manual_currency(self, lines):
+        for line in lines:
+            balance = line.company_id.currency_id.round(
+                line.amount_currency / (line.currency_rate or 1)
+            )
+            line.with_context(
+                check_move_validity=False, avoid_currency_write=True
+            ).balance = balance
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        ret = super().create(vals_list)
+        lines = ret.filtered(
+            lambda rec: rec.manual_currency_rate
+            and not rec.is_invoice(include_receipts=True)
+        ).mapped("line_ids")
+        self._update_balance_manual_currency(lines)
+        return ret
+
+    def write(self, vals):
+        if "currency_id" in vals:
+            if self._context.get("avoid_currency_write"):
+                vals.pop("currency_id")
+            else:
+                self = self.with_context(avoid_currency_write=True)
+        ret = super().write(vals)
+        if "manual_currency_rate" in vals:
+            lines = self.filtered(
+                lambda move: not move.is_invoice(include_receipts=True)
+            ).mapped("line_ids")
+            self._update_balance_manual_currency(lines)
+        return ret
+
+    @api.model
+    def _cleanup_write_orm_values(self, record, vals):
+        if "currency_id" in vals:
+            vals.pop("currency_id")
+        return super()._cleanup_write_orm_values(record, vals)
+
 
 class AccountMoveLine(models.Model):
     _inherit = "account.move.line"
@@ -153,10 +193,11 @@ class AccountMoveLine(models.Model):
             if not line.move_id.manual_currency:
                 continue
             # Currency Rate on move line use 'company_rate'
+            manual_rate = line.move_id._origin.manual_currency_rate or 1
             rate = (
-                line.move_id._origin.manual_currency_rate
+                manual_rate
                 if line.move_id.type_currency == "company_rate"
-                else (1.0 / line.move_id._origin.manual_currency_rate)
+                else (1.0 / manual_rate)
             )
             line.currency_rate = rate
         return res
