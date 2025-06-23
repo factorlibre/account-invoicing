@@ -71,7 +71,7 @@ class AccountMove(models.Model):
                 self.env["res.company"].browse(self._context.get("company_id"))
                 or self.env.company
             ).currency_id.name,
-            "rate_currency_name": "Currency",
+            "rate_currency_name": _("Currency"),
         }
         return [
             [
