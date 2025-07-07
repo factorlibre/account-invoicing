@@ -90,7 +90,7 @@ class AccountMove(models.Model):
         company_currency = self.env.company.currency_id
         amount_currency = company_currency._get_conversion_rate(
             company_currency,
-            self.currency_id,
+            self.currency_id or company_currency,
             self.company_id,
             self.date or today,
         )
