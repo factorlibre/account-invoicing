@@ -122,3 +122,17 @@ msgstr "El envío de %(invoices_count)d facturas se procesará en segundo plano.
 #, python-format
 #~ msgid "Missing email address on customer '{customer_name}'."
 #~ msgstr "Falta la dirección de email en el cliente '{customer_name}'."
+
+#. module: account_invoice_mass_sending
+#: model:ir.model.fields,help:account_invoice_mass_sending.field_account_invoice_send__include_followers
+msgid ""
+"If checked, this email will be also send to document followers. Else, the "
+"email will be sent just to the invoice partner."
+msgstr ""
+"Si está marcado, el correo se enviará también a los seguidores del documentos. "
+"Si no está marcado, el correo solo se enviará al Contacto de la factura."
+
+#. module: account_invoice_mass_sending
+#: model:ir.model.fields,field_description:account_invoice_mass_sending.field_account_invoice_send__include_followers
+msgid "Include Followers"
+msgstr "Incluir seguidores"
