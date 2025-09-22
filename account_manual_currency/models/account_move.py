@@ -61,7 +61,7 @@ class AccountMove(models.Model):
                     rec.amount_total,
                     rec.company_currency_id,
                     rec.company_id,
-                    fields.Date.today(),
+                    rec.date or fields.Date.today(),
                 )
 
     def _get_label_currency_name(self):
