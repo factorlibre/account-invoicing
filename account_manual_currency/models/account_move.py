@@ -31,7 +31,9 @@ class AccountMove(models.Model):
         "currency on the purchase order and last currency",
     )
     total_company_currency = fields.Monetary(
-        compute="_compute_total_company_currency", currency_field="company_currency_id"
+        compute="_compute_total_company_currency",
+        currency_field="company_currency_id",
+        store=True,
     )
     currency_diff = fields.Boolean(
         compute="_compute_currency_diff",
@@ -43,7 +45,7 @@ class AccountMove(models.Model):
         for rec in self:
             rec.currency_diff = rec.company_currency_id != rec.currency_id
 
-    @api.depends("line_ids.balance")
+    @api.depends("line_ids.balance", "date", "invoice_date", "manual_currency")
     def _compute_total_company_currency(self):
         """Convert total currency to company currency"""
         for rec in self:
@@ -102,6 +104,10 @@ class AccountMove(models.Model):
     def _compute_currency(self):
         for rec in self:
             rec.is_manual = rec.currency_id != rec.company_id.currency_id
+
+    def _post(self, soft=True):
+        self._compute_total_company_currency()
+        return super()._post(soft)
 
     def action_refresh_currency(self):
         self.ensure_one()
