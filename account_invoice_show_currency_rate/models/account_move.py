@@ -11,19 +11,16 @@ class AccountMove(models.Model):
         string="Rate amount",
         compute="_compute_currency_rate_amount",
         digits=0,
+        store=True,
     )
     show_currency_rate_amount = fields.Boolean(
         compute="_compute_show_currency_rate_amount", readonly=True
     )
 
     @api.depends(
-        "state",
         "invoice_date",
-        "line_ids.amount_currency",
-        "line_ids.balance",
         "company_id",
         "currency_id",
-        "show_currency_rate_amount",
     )
     def _compute_currency_rate_amount(self):
         """It's necessary to define value according to some cases:
@@ -31,7 +28,7 @@ class AccountMove(models.Model):
         - Case B: Get expected rate (according to invoice_date) to show some value in creation.
         """
         self.currency_rate_amount = 1
-        for item in self.filtered("show_currency_rate_amount"):
+        for item in self:
             rates = item.currency_id._get_rates(
                 item.company_id, item.invoice_date or item.date
             )
@@ -43,3 +40,7 @@ class AccountMove(models.Model):
             item.show_currency_rate_amount = (
                 item.currency_id and item.currency_id != item.company_id.currency_id
             )
+
+    def _post(self, soft=True):
+        self._compute_currency_rate_amount()
+        return super()._post(soft)
