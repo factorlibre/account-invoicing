@@ -196,14 +196,26 @@ class AccountMoveLine(models.Model):
     def _compute_currency_rate(self):
         res = super()._compute_currency_rate()
         for line in self:
-            if not line.move_id.manual_currency:
-                continue
-            # Currency Rate on move line use 'company_rate'
-            manual_rate = line.move_id._origin.manual_currency_rate or 1
-            rate = (
-                manual_rate
-                if line.move_id.type_currency == "company_rate"
-                else (1.0 / manual_rate)
-            )
-            line.currency_rate = rate
+            if line.move_id.manual_currency:
+                # Currency Rate on move line use 'company_rate'
+                manual_rate = line.move_id._origin.manual_currency_rate or 1
+                line.currency_rate = (
+                    manual_rate
+                    if line.move_id.type_currency == "company_rate"
+                    else (1.0 / manual_rate)
+                )
+            if line.currency_id and not line.currency_rate:
+                # Safety net: core account.move.line._sync_invoice divides
+                # amount_currency / currency_rate; never leave a foreign-currency
+                # line at 0. Recompute the real conversion rate, same direction
+                # and args as the core compute. Only reachable with
+                # manual_currency disabled, so type_currency does not apply here.
+                line.currency_rate = line.company_currency_id._get_conversion_rate(
+                    line.company_currency_id,
+                    line.currency_id,
+                    line.company_id,
+                    line.move_id.invoice_date
+                    or line.move_id.date
+                    or fields.Date.context_today(line),
+                )
         return res
