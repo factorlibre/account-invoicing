@@ -1,9 +1,15 @@
 # Copyright 2023 Ecosoft Co., Ltd. (http://ecosoft.co.th)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from unittest.mock import patch
+
 from odoo import Command, fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests.common import Form, TransactionCase
+
+from odoo.addons.account.models.account_move_line import (
+    AccountMoveLine as BaseAccountMoveLine,
+)
 
 
 class TestAccountManualCurrency(TransactionCase):
@@ -130,3 +136,51 @@ class TestAccountManualCurrency(TransactionCase):
         self.assertAlmostEqual(
             payment.move_id.total_company_currency, invoice1.total_company_currency
         )
+
+    def test_02_post_does_not_leave_zero_currency_rate(self):
+        # Regression for the production ZeroDivisionError on posting a
+        # foreign-currency move: core account.move.line._sync_invoice divides
+        # amount_currency / currency_rate, and the base rate computation
+        # transiently left a foreign line at currency_rate=0. We reproduce that
+        # precondition (base compute leaves 0) and post. Without the guard the
+        # foreign lines keep currency_rate=0 (the state that blows up the core
+        # division); with the guard the real rate is recomputed.
+        invoice = self._create_invoice(self.partner1, "in_invoice", self.eur_currency)
+
+        def _leave_zero_rate(records):
+            for line in records:
+                line.currency_rate = 0.0
+
+        currency_lines = invoice.line_ids.filtered(lambda l: l.currency_id)
+        self.assertTrue(currency_lines, "expected foreign-currency lines")
+
+        with patch.object(
+            BaseAccountMoveLine, "_compute_currency_rate", _leave_zero_rate
+        ):
+            # Invalidate so the rate is recomputed during _post (as in the
+            # production race) instead of served from cache.
+            invoice.line_ids.invalidate_recordset(["currency_rate"])
+            invoice.action_post()
+        self.assertEqual(invoice.state, "posted")
+        self.assertFalse(
+            invoice.line_ids.filtered(lambda l: l.currency_id and not l.currency_rate)
+        )
+
+    def test_03_post_manual_currency_foreign_stays_balanced(self):
+        # Regression for the real scenario (V3): a foreign-currency bill with a
+        # valid manual rate posts without error, keeps the rate and stays
+        # balanced. Also checks the guard does not override a valid manual rate.
+        invoice = self._create_invoice(self.partner1, "in_invoice", self.eur_currency)
+        with Form(invoice) as inv:
+            inv.manual_currency = True
+            inv.type_currency = "company_rate"
+            inv.manual_currency_rate = 7.82
+        inv.save()
+        invoice.action_post()
+        self.assertEqual(invoice.state, "posted")
+        currency_lines = invoice.line_ids.filtered(lambda l: l.currency_id)
+        self.assertTrue(currency_lines, "expected foreign-currency lines")
+        for line in currency_lines:
+            self.assertAlmostEqual(line.currency_rate, 7.82, places=4)
+        # Move stays balanced after the guard runs.
+        self.assertAlmostEqual(sum(invoice.line_ids.mapped("balance")), 0.0, places=2)
