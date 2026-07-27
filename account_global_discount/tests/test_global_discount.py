@@ -71,6 +71,16 @@ class TestGlobalDiscount(common.SavepointCase):
         })
         cls.invoice._onchange_invoice_line_ids()
 
+    def _discount_move_lines(self, invoice):
+        """Global discount lines of the entry.
+
+        Matched by name, as the module's own tests do: the breakdown is built
+        with new() in the onchange, so its id never reaches
+        invoice_global_discount_id on the move line.
+        """
+        return invoice.move_id.line_ids.filtered(
+            lambda x: "Test Discount" in (x.name or ""))
+
     def test_01_global_invoice_succesive_discounts(self):
         """Add global discounts to the invoice"""
         self.assertAlmostEqual(self.invoice.amount_total, 230)
@@ -238,3 +248,110 @@ class TestGlobalDiscount(common.SavepointCase):
         self.invoice.global_discount_ids = self.global_discount_1
         with self.assertRaises(exceptions.UserError):
             self.invoice._onchange_global_discount_ids()
+
+    def test_07_remove_global_discounts(self):
+        """Removing every global discount removes its effects as well"""
+        self.invoice.global_discount_ids = self.global_discount_3
+        self.invoice._onchange_global_discount_ids()
+        self.assertEqual(len(self.invoice.invoice_global_discount_ids), 1)
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 100.0)
+        # The user removes the discount, so the stored breakdown must go away
+        # with it. Otherwise it keeps feeding the amounts and the entry.
+        self.invoice.global_discount_ids = False
+        self.invoice._onchange_global_discount_ids()
+        self.assertFalse(self.invoice.invoice_global_discount_ids)
+        self.assertAlmostEqual(self.invoice.tax_line_ids.base, 200.0)
+        self.assertAlmostEqual(self.invoice.tax_line_ids.amount, 30.0)
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 200.0)
+        self.assertAlmostEqual(self.invoice.amount_total, 230.0)
+        self.assertFalse(self.invoice.amount_global_discount)
+        # The accounting entry must not carry a discount line either
+        self.invoice.action_invoice_open()
+        self.assertFalse(self._discount_move_lines(self.invoice))
+
+    def test_08_remove_global_discounts_on_refund(self):
+        """Same as test_07 but on a refund, which is the reported case"""
+        refund = self.invoice.copy({'type': 'in_refund'})
+        refund.global_discount_ids = self.global_discount_3
+        refund._onchange_global_discount_ids()
+        self.assertAlmostEqual(refund.amount_untaxed, 100.0)
+        refund.global_discount_ids = False
+        refund._onchange_global_discount_ids()
+        self.assertFalse(refund.invoice_global_discount_ids)
+        # The taxable base the AEAT reports reads must be the real one
+        self.assertAlmostEqual(refund.amount_untaxed, 200.0)
+        self.assertAlmostEqual(refund.tax_line_ids.base, 200.0)
+        refund.action_invoice_open()
+        self.assertFalse(self._discount_move_lines(refund))
+
+    def test_10_remove_global_discounts_without_the_onchange(self):
+        """Clearing the discounts must remove the breakdown even if the client
+        does not send it back.
+
+        The view hides invoice_global_discount_ids as soon as
+        global_discount_ids is empty, which is exactly when its removal has to
+        be saved, so the write has to enforce the invariant on its own instead
+        of relying on what the onchange returned.
+        """
+        self.invoice.global_discount_ids = self.global_discount_3
+        self.invoice._onchange_global_discount_ids()
+        self.assertTrue(self.invoice.invoice_global_discount_ids)
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 100.0)
+        # Save clearing the discounts only, with no onchange and without
+        # touching the breakdown, as the web client does
+        self.invoice.write({'global_discount_ids': [(6, 0, [])]})
+        self.assertFalse(self.invoice.invoice_global_discount_ids)
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 200.0)
+        self.assertAlmostEqual(self.invoice.amount_total, 230.0)
+
+    def test_12_remove_global_discounts_dropping_the_breakdown(self):
+        """The tax lines are recomputed even when the breakdown is dropped in
+        the same write.
+
+        The client may send the removal of the breakdown along with the empty
+        discounts. The untaxed amount then goes back to the full base on its
+        own, but the tax lines keep the discounted one, so the invoice ends up
+        contradicting itself.
+        """
+        self.invoice.global_discount_ids = self.global_discount_3
+        self.invoice._onchange_global_discount_ids()
+        self.assertAlmostEqual(self.invoice.tax_line_ids.base, 100.0)
+        breakdown = self.invoice.invoice_global_discount_ids
+        self.invoice.write({
+            'global_discount_ids': [(6, 0, [])],
+            'invoice_global_discount_ids': [(2, x.id) for x in breakdown],
+        })
+        self.assertFalse(self.invoice.invoice_global_discount_ids)
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 200.0)
+        self.assertAlmostEqual(self.invoice.tax_line_ids.base, 200.0)
+        self.assertAlmostEqual(self.invoice.amount_total, 230.0)
+
+    def test_11_validated_invoice_keeps_breakdown_on_write(self):
+        """The same write leaves a validated invoice alone, so its totals keep
+        matching the journal entry already posted."""
+        self.invoice.global_discount_ids = self.global_discount_3
+        self.invoice._onchange_global_discount_ids()
+        self.invoice.action_invoice_open()
+        self.invoice.write({'global_discount_ids': [(6, 0, [])]})
+        self.assertTrue(self.invoice.invoice_global_discount_ids)
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 100.0)
+
+    def test_09_remove_global_discounts_on_validated_invoice(self):
+        """A validated invoice keeps its breakdown, to stay in sync with its
+        journal entry.
+
+        The entry is only built on validation, so dropping the breakdown
+        afterwards would raise the stored totals and leave them contradicting
+        an entry that is never rebuilt. Correcting such an invoice requires
+        resetting it to draft.
+        """
+        self.invoice.global_discount_ids = self.global_discount_3
+        self.invoice._onchange_global_discount_ids()
+        self.invoice.action_invoice_open()
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 100.0)
+        self.assertTrue(self._discount_move_lines(self.invoice))
+        # Removing the discount now must not silently change the amounts
+        self.invoice.global_discount_ids = False
+        self.invoice._onchange_global_discount_ids()
+        self.assertTrue(self.invoice.invoice_global_discount_ids)
+        self.assertAlmostEqual(self.invoice.amount_untaxed, 100.0)

@@ -42,9 +42,26 @@ class AccountInvoice(models.Model):
     def _set_global_discounts_by_tax(self):
         """Create invoice global discount lines by taxes combinations and
         discounts.
+
+        This also resets a previous breakdown when no discount is left on a
+        draft invoice, so that removing every global discount actually removes
+        its effects.
         """
         self.ensure_one()
         if not self.global_discount_ids:
+            # The breakdown is stored and feeds both the computed amounts
+            # (_compute_amount_one) and the accounting entry
+            # (invoice_line_move_line_get). Returning without clearing it
+            # would keep applying a discount that no longer exists.
+            #
+            # Only while the invoice is a draft. Once validated, amount_untaxed
+            # and amount_total are already stored and the journal entry is
+            # posted: dropping the breakdown would raise the invoice totals and
+            # leave them contradicting their own entry, which is not rebuilt on
+            # write. Correcting a validated invoice means setting it back to
+            # draft first, so that the entry is regenerated.
+            if self.state == 'draft':
+                self.invoice_global_discount_ids = [(5, 0, 0)]
             return
         invoice_global_discounts = self.env['account.invoice.global.discount']
         taxes_keys = {}
@@ -95,6 +112,40 @@ class AccountInvoice(models.Model):
         fetched in their sequence order """
         for inv in self:
             inv._set_global_discounts_by_tax()
+
+    @api.multi
+    def write(self, vals):
+        """Enforce that a draft invoice without global discounts has no
+        breakdown left.
+
+        The onchange alone is not enough. The breakdown field is hidden by the
+        view precisely when `global_discount_ids` becomes empty
+        (`attrs="{'invisible': [('global_discount_ids', '=', [])]}"`), which is
+        the very moment its removal has to be saved, so the client may drop it
+        from the payload and the orphan breakdown survives, keeping the
+        discount applied to a draft invoice that no longer has any.
+
+        Only the removal is enforced here. Rebuilding the breakdown on write
+        would run the taxes sanity check on save and raise where the module
+        currently raises on the onchange, changing behaviour beyond the bug
+        being fixed.
+
+        The tax lines are recomputed along with it. They hold the discounted
+        base, and dropping the breakdown without them would leave an untaxed
+        amount of the full base next to a tax computed on the discounted one.
+        """
+        res = super().write(vals)
+        if 'global_discount_ids' in vals:
+            for invoice in self.filtered(lambda x: x.state == 'draft'):
+                if (not invoice.global_discount_ids and
+                        invoice.invoice_global_discount_ids):
+                    invoice.invoice_global_discount_ids = [(5, 0, 0)]
+                # Outside the condition above on purpose: the client may have
+                # dropped the breakdown itself, and then the tax lines would
+                # keep the discounted base while the untaxed amount goes back
+                # to the full one, leaving the invoice contradicting itself.
+                invoice.compute_taxes()
+        return res
 
     @api.onchange('invoice_line_ids')
     def _onchange_invoice_line_ids(self):
