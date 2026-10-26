@@ -136,6 +136,9 @@ class TestAccountManualCurrency(TransactionCase):
         self.assertAlmostEqual(
             payment.move_id.total_company_currency, invoice1.total_company_currency
         )
+        self.assertTrue(payment.move_id.manual_currency)
+        self.assertEqual(payment.currency_id, invoice1.currency_id)
+        self.assertEqual(payment.move_id.currency_id, invoice1.currency_id)
 
     def test_02_post_does_not_leave_zero_currency_rate(self):
         # Regression for the production ZeroDivisionError on posting a
@@ -184,3 +187,88 @@ class TestAccountManualCurrency(TransactionCase):
             self.assertAlmostEqual(line.currency_rate, 7.82, places=4)
         # Move stays balanced after the guard runs.
         self.assertAlmostEqual(sum(invoice.line_ids.mapped("balance")), 0.0, places=2)
+
+    def _create_foreign_payment(self):
+        company_currency = self.env.company.currency_id
+        foreign = (
+            self.usd_currency
+            if company_currency == self.eur_currency
+            else self.eur_currency
+        )
+        foreign.active = True
+        bank = self.env["account.journal"].create(
+            {"name": "Bank Test", "type": "bank", "code": "BT04"}
+        )
+        payment = self.payment_model.create(
+            {
+                "payment_type": "inbound",
+                "partner_type": "customer",
+                "partner_id": self.partner1.id,
+                "amount": 100.0,
+                "currency_id": foreign.id,
+                "journal_id": bank.id,
+            }
+        )
+        return payment
+
+    def test_04_sync_keeps_payment_currency_without_manual_currency(self):
+        payment = self._create_foreign_payment()
+        self.assertFalse(payment.manual_currency)
+        company_currency = self.env.company.currency_id
+        self.assertNotEqual(payment.currency_id, company_currency)
+        vals = self.inv_model._cleanup_write_orm_values(
+            payment, {"currency_id": company_currency.id}
+        )
+        self.assertEqual(vals.get("currency_id"), company_currency.id)
+
+    def test_05_sync_drops_payment_currency_with_manual_currency(self):
+        payment = self._create_foreign_payment()
+        payment.move_id.manual_currency = True
+        company_currency = self.env.company.currency_id
+        self.assertNotEqual(payment.currency_id, company_currency)
+        vals = self.inv_model._cleanup_write_orm_values(
+            payment, {"currency_id": company_currency.id}
+        )
+        self.assertNotIn("currency_id", vals)
+
+    def test_06_posted_foreign_payment_keeps_currency(self):
+        payment = self._create_foreign_payment()
+        foreign = payment.currency_id
+        payment.action_post()
+        # A pending recompute of the payment currency (it depends on the
+        # journal) is triggered while the core sync reads the record; the sync
+        # must write back the currency of the liquidity line.
+        payment.env.add_to_compute(payment._fields["currency_id"], payment)
+        payment._synchronize_from_moves({"line_ids"})
+        self.assertEqual(payment.currency_id, foreign)
+        self.assertEqual(payment.move_id.currency_id, foreign)
+        liquidity_lines = payment._seek_for_lines()[0]
+        self.assertEqual(liquidity_lines.currency_id, foreign)
+        self.assertEqual(payment.amount, 100.0)
+
+    def test_07_foreign_statement_line_keeps_currency(self):
+        company_currency = self.env.company.currency_id
+        foreign = (
+            self.usd_currency
+            if company_currency == self.eur_currency
+            else self.eur_currency
+        )
+        foreign.active = True
+        bank = self.env["account.journal"].create(
+            {"name": "Bank Test", "type": "bank", "code": "BT07"}
+        )
+        st_line = self.env["account.bank.statement.line"].create(
+            {
+                "journal_id": bank.id,
+                "payment_ref": "Foreign statement line",
+                "partner_id": self.partner1.id,
+                "amount": 100.0,
+                "foreign_currency_id": foreign.id,
+                "amount_currency": 120.0,
+            }
+        )
+        st_line._synchronize_from_moves({"line_ids"})
+        self.assertFalse(st_line.move_id.manual_currency)
+        self.assertEqual(st_line.foreign_currency_id, foreign)
+        self.assertEqual(st_line.amount_currency, 120.0)
+        self.assertEqual(st_line.move_id.currency_id, foreign)
