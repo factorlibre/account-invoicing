@@ -182,7 +182,7 @@ class AccountMove(models.Model):
 
     @api.model
     def _cleanup_write_orm_values(self, record, vals):
-        if "currency_id" in vals:
+        if "currency_id" in vals and record.manual_currency:
             vals.pop("currency_id")
         return super()._cleanup_write_orm_values(record, vals)
 
